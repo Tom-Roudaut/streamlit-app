@@ -53,17 +53,17 @@ def get_complete_url(simplified_url):
 
     # Essayez Google d'abord
     url = search_google(query)
-    if "Error" not in url:
+    if url and "Error" not in url:
         return url
 
     # Si Google échoue, essayez Bing
     url = search_bing(query)
-    if "Error" not in url:
+    if url and "Error" not in url:
         return url
 
     # Si Bing échoue, essayez DuckDuckGo
     url = search_duckduckgo(query)
-    if "Error" not in url:
+    if url and "Error" not in url:
         return url
 
     # Si tous échouent, retournez l'URL simplifiée
