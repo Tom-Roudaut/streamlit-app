@@ -69,7 +69,7 @@ def main():
         elif function_choice == 'Import Pitchbook':
             # Vérifier que la colonne B contient des URLs valides
             if 'Unnamed: 1' in df.columns:
-                df['Complete URL'] = df['Unnamed: 1'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else x)
+                df['Complete URL'] = df['Website'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else x)
                 
                 st.write("Completing URLs for each simplified URL...")
                 st.write(df.head())
