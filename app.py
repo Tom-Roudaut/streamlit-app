@@ -46,6 +46,8 @@ def search_duckduckgo(query):
 
 # Fonction pour compléter l'URL
 def get_complete_url(simplified_url):
+    if not isinstance(simplified_url, str):
+        return "Invalid URL"
     full_url = clean_url(simplified_url)
     query = f"{simplified_url}"
 
@@ -106,7 +108,7 @@ def main():
         elif function_choice == 'Import Pitchbook':
             # Traitement pour Import Pitchbook
             if 'Website' in df.columns:
-                df['Complete URL'] = df['Website'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else x)
+                df['Complete URL'] = df['Website'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else "Invalid URL")
                 st.write("Completing URLs for each simplified URL...")
                 st.write(df.head())
                 output_file = 'completed_urls.csv'
