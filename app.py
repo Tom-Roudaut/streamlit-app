@@ -15,7 +15,7 @@ def clean_url(url):
 # Fonction pour interroger Google
 def search_google(query):
     try:
-        for url in search(query, num_results=1):
+        for url in search(query, num_results=1, stop=1):
             return url
     except Exception as e:
         return f"Error: {str(e)}"
@@ -24,7 +24,7 @@ def search_google(query):
 def search_bing(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers)
+        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers, timeout=5)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('li', {'class': 'b_algo'})
         if results:
@@ -36,7 +36,7 @@ def search_bing(query):
 def search_duckduckgo(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers)
+        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers, timeout=5)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('a', {'class': 'result__a'})
         if results:
