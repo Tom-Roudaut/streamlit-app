@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from googlesearch import search
-import requests
 
 # Fonction pour nettoyer l'URL
 def clean_url(url):
@@ -42,22 +41,14 @@ def main():
         st.write(df.head())
 
         if function_choice == 'Import to Affinity':
-            # Ajouter une colonne pour les URLs en fonction des noms de sociétés dans la colonne A
+            # Traitement pour Import to Affinity
             df['URL'] = df.iloc[:, 0].apply(get_complete_url)
-            
-            # Nettoyer les URLs
             df['URL'] = df['URL'].apply(clean_url)
-            
-            # Renommer les colonnes
             df.columns = ['Organization Name', 'Organization Website']
-            
             st.write("URLs have been fetched. Here are the first few results:")
             st.write(df.head())
-            
-            # Sauvegarder les résultats
             output_file = 'output_with_urls.csv'
             df.to_csv(output_file, index=False, sep=',')
-            
             with open(output_file, "rb") as file:
                 btn = st.download_button(
                     label="Download updated CSV file",
@@ -67,17 +58,13 @@ def main():
                 )
 
         elif function_choice == 'Import Pitchbook':
-            # Vérifier que la colonne B contient des URLs valides
+            # Traitement pour Import Pitchbook
             if 'Unnamed: 1' in df.columns:
-                df['Complete URL'] = df['Website'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else x)
-                
+                df['Complete URL'] = df['Unnamed: 1'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else x)
                 st.write("Completing URLs for each simplified URL...")
                 st.write(df.head())
-                
-                # Sauvegarder les résultats
                 output_file = 'completed_urls.csv'
                 df.to_csv(output_file, index=False, sep=',')
-                
                 with open(output_file, "rb") as file:
                     btn = st.download_button(
                         label="Download completed URLs CSV file",
