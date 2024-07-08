@@ -3,6 +3,7 @@ import pandas as pd
 from googlesearch import search
 import requests
 from bs4 import BeautifulSoup
+import concurrent.futures
 
 # Fonction pour nettoyer l'URL
 def clean_url(url):
@@ -44,27 +45,26 @@ def search_duckduckgo(query):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# Fonction pour compléter l'URL
+# Fonction pour compléter l'URL en utilisant la parallélisation
 def get_complete_url(simplified_url):
     if not isinstance(simplified_url, str):
         return "Invalid URL"
     full_url = clean_url(simplified_url)
     query = f"{simplified_url}"
 
-    # Essayez Google d'abord
-    url = search_google(query)
-    if url and "Error" not in url:
-        return url
+    # Dictionnaire des fonctions de recherche
+    search_functions = {
+        'Google': search_google,
+        'Bing': search_bing,
+        'DuckDuckGo': search_duckduckgo
+    }
 
-    # Si Google échoue, essayez Bing
-    url = search_bing(query)
-    if url and "Error" not in url:
-        return url
-
-    # Si Bing échoue, essayez DuckDuckGo
-    url = search_duckduckgo(query)
-    if url and "Error" not in url:
-        return url
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {executor.submit(func, query): name for name, func in search_functions.items()}
+        for future in concurrent.futures.as_completed(futures):
+            url = future.result()
+            if url and "Error" not in url:
+                return url
 
     # Si tous échouent, retournez l'URL simplifiée
     return full_url
