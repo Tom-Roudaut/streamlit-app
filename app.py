@@ -20,11 +20,14 @@ def search_bing(query):
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('li', {'class': 'b_algo'})
         if results:
-            url = results[0].find('a')['href']
-            if 'http' in url:
-                return url
+            for result in results:
+                url = result.find('a')['href']
+                if 'http' in url and '...' not in url:  # Check if the URL is a valid HTTP link and not truncated
+                    return url
     except Exception as e:
         return None
+
+    return None
 
 # Fonction pour interroger DuckDuckGo
 def search_duckduckgo(query):
@@ -34,11 +37,14 @@ def search_duckduckgo(query):
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('a', {'class': 'result__a'})
         if results:
-            url = results[0]['href']
-            if 'http' in url:
-                return url
+            for result in results:
+                url = result['href']
+                if 'http' in url and '...' not in url:  # Check if the URL is a valid HTTP link and not truncated
+                    return url
     except Exception as e:
         return None
+
+    return None
 
 # Fonction pour interroger Google
 def search_google(query):
@@ -49,10 +55,12 @@ def search_google(query):
         results = soup.find_all('a')
         for result in results:
             href = result.get('href')
-            if href and 'http' in href:
+            if href and 'http' in href and '...' not in href:  # Check if the URL is a valid HTTP link and not truncated
                 return href
     except Exception as e:
         return None
+
+    return None
 
 # Fonction pour compléter l'URL
 def get_complete_url(company_name):
