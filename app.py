@@ -25,6 +25,7 @@ def search_bing(query):
                 if 'http' in url and '...' not in url:  # Check if the URL is a valid HTTP link and not truncated
                     return url
     except Exception as e:
+        print(f"Bing search error: {e}")
         return None
 
     return None
@@ -42,6 +43,7 @@ def search_duckduckgo(query):
                 if 'http' in url and '...' not in url:  # Check if the URL is a valid HTTP link and not truncated
                     return url
     except Exception as e:
+        print(f"DuckDuckGo search error: {e}")
         return None
 
     return None
@@ -58,6 +60,7 @@ def search_google(query):
             if href and 'http' in href and '...' not in href:  # Check if the URL is a valid HTTP link and not truncated
                 return href
     except Exception as e:
+        print(f"Google search error: {e}")
         return None
 
     return None
@@ -65,23 +68,28 @@ def search_google(query):
 # Fonction pour compléter l'URL
 def get_complete_url(company_name):
     query = f"{company_name} official site"
+    print(f"Searching for: {query}")
 
     # Essayez Bing
     url = search_bing(query)
-    if url and "Error" not in url:
+    if url:
+        print(f"Bing found: {url}")
         return url
 
     # Si Bing échoue, essayez DuckDuckGo
     url = search_duckduckgo(query)
-    if url and "Error" not in url:
+    if url:
+        print(f"DuckDuckGo found: {url}")
         return url
 
     # Si DuckDuckGo échoue, essayez Google
     url = search_google(query)
-    if url and "Error" not in url:
+    if url:
+        print(f"Google found: {url}")
         return url
 
     # Si tous échouent, retournez une erreur
+    print(f"Could not find URL for: {company_name}")
     return f"Error: Could not find URL for {company_name}"
 
 # Fonction principale pour Streamlit
