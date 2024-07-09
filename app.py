@@ -22,21 +22,36 @@ def search_bing(query):
         if results:
             return results[0].find('a')['href']
     except Exception as e:
-        return f"Error: {str(e)}"
+        return None
 
-# Fonction pour vérifier et compléter l'URL
-def get_complete_url(name):
+# Fonction pour interroger DuckDuckGo
+def search_duckduckgo(query):
     try:
-        query = f"{name} site official website"
-        url = search_bing(query)
-        
-        # Si l'URL contient le nom de l'organisation, elle est probablement correcte
-        if name.lower() in url.lower():
-            return url
-        else:
-            return f"Error: Invalid URL {url}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        results = soup.find_all('a', {'class': 'result__a'})
+        if results:
+            return results[0]['href']
     except Exception as e:
-        return f"Error: {str(e)}"
+        return None
+
+# Fonction pour compléter l'URL
+def get_complete_url(company_name):
+    query = f"{company_name} official website"
+    
+    # Recherche sur Bing
+    url = search_bing(query)
+    if url and company_name.lower() in url.lower():
+        return url
+
+    # Recherche sur DuckDuckGo si Bing échoue
+    url = search_duckduckgo(query)
+    if url and company_name.lower() in url.lower():
+        return url
+
+    # Si tout échoue, retourner une erreur
+    return f"Error: Could not find URL for {company_name}"
 
 # Fonction principale pour Streamlit
 def main():
