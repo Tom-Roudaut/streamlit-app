@@ -16,42 +16,43 @@ def clean_url(url):
 def search_bing(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers)
+        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('li', {'class': 'b_algo'})
         if results:
             return results[0].find('a')['href']
     except Exception as e:
-        return None
+        return f"Error: {str(e)}"
 
 # Fonction pour interroger DuckDuckGo
 def search_duckduckgo(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers)
+        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('a', {'class': 'result__a'})
         if results:
             return results[0]['href']
     except Exception as e:
-        return None
+        return f"Error: {str(e)}"
 
 # Fonction pour compléter l'URL
-def get_complete_url(company_name):
-    query = f"{company_name} official website"
-    
-    # Recherche sur Bing
+def get_complete_url(simplified_url):
+    full_url = clean_url(simplified_url)
+    query = f"{simplified_url}"
+
+    # Essayez Bing
     url = search_bing(query)
-    if url and company_name.lower() in url.lower():
+    if url and "Error" not in url:
         return url
 
-    # Recherche sur DuckDuckGo si Bing échoue
+    # Si Bing échoue, essayez DuckDuckGo
     url = search_duckduckgo(query)
-    if url and company_name.lower() in url.lower():
+    if url and "Error" not in url:
         return url
 
-    # Si tout échoue, retourner une erreur
-    return f"Error: Could not find URL for {company_name}"
+    # Si tous échouent, retournez l'URL simplifiée
+    return f"Error: Could not find URL for {simplified_url}"
 
 # Fonction principale pour Streamlit
 def main():
