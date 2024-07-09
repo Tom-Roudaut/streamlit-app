@@ -42,16 +42,17 @@ def search_google(query):
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(f"https://www.google.com/search?q={query}", headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
-        results = soup.find_all('div', {'class': 'BNeawe UPmit AP7Wnd'})
-        if results:
-            return results[0].text
+        results = soup.find_all('a')
+        for result in results:
+            href = result.get('href')
+            if href and 'http' in href:
+                return href
     except Exception as e:
         return None
 
 # Fonction pour compléter l'URL
-def get_complete_url(simplified_url):
-    full_url = clean_url(simplified_url)
-    query = f"{simplified_url} official site"
+def get_complete_url(company_name):
+    query = f"{company_name} official site"
 
     # Essayez Bing
     url = search_bing(query)
@@ -69,7 +70,7 @@ def get_complete_url(simplified_url):
         return url
 
     # Si tous échouent, retournez une erreur
-    return f"Error: Could not find URL for {simplified_url}"
+    return f"Error: Could not find URL for {company_name}"
 
 # Fonction principale pour Streamlit
 def main():
