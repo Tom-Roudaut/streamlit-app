@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import concurrent.futures
+from googlesearch import search
 
 # Fonction pour nettoyer l'URL
 def clean_url(url):
@@ -16,81 +16,26 @@ def clean_url(url):
 def search_bing(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers, timeout=10)
+        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('li', {'class': 'b_algo'})
         if results:
-            for result in results:
-                url = result.find('a')['href']
-                if 'http' in url and '...' not in url:  # Check if the URL is a valid HTTP link and not truncated
-                    return url
+            return results[0].find('a')['href']
     except Exception as e:
-        print(f"Bing search error: {e}")
-        return None
-
-    return None
-
-# Fonction pour interroger DuckDuckGo
-def search_duckduckgo(query):
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
-        results = soup.find_all('a', {'class': 'result__a'})
-        if results:
-            for result in results:
-                url = result['href']
-                if 'http' in url and '...' not in url:  # Check if the URL is a valid HTTP link and not truncated
-                    return url
-    except Exception as e:
-        print(f"DuckDuckGo search error: {e}")
-        return None
-
-    return None
-
-# Fonction pour interroger Google
-def search_google(query):
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://www.google.com/search?q={query}", headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
-        results = soup.find_all('a')
-        for result in results:
-            href = result.get('href')
-            if href and 'http' in href and '...' not in href:  # Check if the URL is a valid HTTP link and not truncated
-                return href
-    except Exception as e:
-        print(f"Google search error: {e}")
-        return None
-
-    return None
+        return f"Error: {str(e)}"
 
 # Fonction pour compléter l'URL
-def get_complete_url(company_name):
-    query = f"{company_name} official site"
-    print(f"Searching for: {query}")
+def get_complete_url(simplified_url):
+    full_url = clean_url(simplified_url)
+    query = f"{simplified_url}"
 
     # Essayez Bing
     url = search_bing(query)
-    if url:
-        print(f"Bing found: {url}")
+    if url and "Error" not in url:
         return url
 
-    # Si Bing échoue, essayez DuckDuckGo
-    url = search_duckduckgo(query)
-    if url:
-        print(f"DuckDuckGo found: {url}")
-        return url
-
-    # Si DuckDuckGo échoue, essayez Google
-    url = search_google(query)
-    if url:
-        print(f"Google found: {url}")
-        return url
-
-    # Si tous échouent, retournez une erreur
-    print(f"Could not find URL for: {company_name}")
-    return f"Error: Could not find URL for {company_name}"
+    # Si Bing échoue, retournez l'URL simplifiée
+    return full_url
 
 # Fonction principale pour Streamlit
 def main():
@@ -111,27 +56,24 @@ def main():
         st.write("File uploaded successfully. Here are the first few rows:")
         st.write(df.head())
 
+        total_urls = len(df)
         progress_bar = st.progress(0)
-        progress_text = st.empty()
+        progress_value = 0
 
-        def update_progress(current, total):
-            progress_percentage = int((current / total) * 100)
-            progress_bar.progress(progress_percentage)
-            progress_text.text(f"Progress: {current}/{total}")
+        # Mise à jour de la barre de progression
+        def update_progress_bar(current_value, total_value):
+            progress = current_value / total_value
+            progress_bar.progress(progress)
 
         if function_choice == 'Import to Affinity':
-            total_rows = len(df)
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future_to_url = {executor.submit(get_complete_url, row[0]): idx for idx, row in df.iterrows()}
-                for i, future in enumerate(concurrent.futures.as_completed(future_to_url)):
-                    idx = future_to_url[future]
-                    try:
-                        url = future.result()
-                        df.at[idx, 'URL'] = url
-                    except Exception as exc:
-                        df.at[idx, 'URL'] = f"Error: {str(exc)}"
-                    update_progress(i + 1, total_rows)
-            
+            urls = []
+            for i, row in df.iterrows():
+                url = get_complete_url(row[0])
+                urls.append(url)
+                progress_value += 1
+                update_progress_bar(progress_value, total_urls)
+
+            df['URL'] = urls
             df['URL'] = df['URL'].apply(clean_url)
             df.columns = ['Organization Name', 'Organization Website']
             st.write("URLs have been fetched. Here are the first few results:")
@@ -148,18 +90,14 @@ def main():
 
         elif function_choice == 'Import Pitchbook':
             if 'Website' in df.columns:
-                total_rows = len(df)
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future_to_url = {executor.submit(get_complete_url, row['Website']): idx for idx, row in df.iterrows()}
-                    for i, future in enumerate(concurrent.futures.as_completed(future_to_url)):
-                        idx = future_to_url[future]
-                        try:
-                            url = future.result()
-                            df.at[idx, 'Complete URL'] = url
-                        except Exception as exc:
-                            df.at[idx, 'Complete URL'] = f"Error: {str(exc)}"
-                        update_progress(i + 1, total_rows)
+                urls = []
+                for i, row in df.iterrows():
+                    url = get_complete_url(row['Website'])
+                    urls.append(url)
+                    progress_value += 1
+                    update_progress_bar(progress_value, total_urls)
 
+                df['Complete URL'] = urls
                 st.write("Completing URLs for each simplified URL...")
                 st.write(df.head())
                 output_file = 'completed_urls.csv'
