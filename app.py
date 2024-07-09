@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 import concurrent.futures
-from googlesearch import search
 
 # Fonction pour nettoyer l'URL
 def clean_url(url):
@@ -25,31 +24,19 @@ def search_bing(query):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# Fonction pour interroger Google
-def search_google(query):
+# Fonction pour vérifier et compléter l'URL
+def get_complete_url(name):
     try:
-        for url in search(query, num_results=1):
+        query = f"{name} site official website"
+        url = search_bing(query)
+        
+        # Si l'URL contient le nom de l'organisation, elle est probablement correcte
+        if name.lower() in url.lower():
             return url
+        else:
+            return f"Error: Invalid URL {url}"
     except Exception as e:
         return f"Error: {str(e)}"
-
-# Fonction pour compléter l'URL
-def get_complete_url(simplified_url):
-    full_url = clean_url(simplified_url)
-    query = f"{simplified_url}"
-
-    # Essayez Google d'abord
-    url = search_google(query)
-    if url and "Error" not in url:
-        return url
-
-    # Si Google échoue, essayez Bing
-    url = search_bing(query)
-    if url and "Error" not in url:
-        return url
-
-    # Si tous échouent, retournez l'URL simplifiée
-    return full_url
 
 # Fonction principale pour Streamlit
 def main():
