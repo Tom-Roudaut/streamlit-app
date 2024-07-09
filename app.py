@@ -20,7 +20,9 @@ def search_bing(query):
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('li', {'class': 'b_algo'})
         if results:
-            return results[0].find('a')['href']
+            url = results[0].find('a')['href']
+            if 'http' in url:
+                return url
     except Exception as e:
         return None
 
@@ -32,7 +34,9 @@ def search_duckduckgo(query):
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('a', {'class': 'result__a'})
         if results:
-            return results[0]['href']
+            url = results[0]['href']
+            if 'http' in url:
+                return url
     except Exception as e:
         return None
 
