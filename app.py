@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-from googlesearch import search
 import requests
 from bs4 import BeautifulSoup
-import concurrent.futures
 
 # Fonction pour nettoyer l'URL
 def clean_url(url):
@@ -16,7 +14,8 @@ def clean_url(url):
 # Fonction pour interroger Google
 def search_google(query):
     try:
-        for url in search(query, num_results=1, stop=1):
+        from googlesearch import search
+        for url in search(query, num_results=1):
             return url
     except Exception as e:
         return f"Error: {str(e)}"
@@ -25,7 +24,7 @@ def search_google(query):
 def search_bing(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers, timeout=5)
+        response = requests.get(f"https://www.bing.com/search?q={query}", headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('li', {'class': 'b_algo'})
         if results:
@@ -37,7 +36,7 @@ def search_bing(query):
 def search_duckduckgo(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers, timeout=5)
+        response = requests.get(f"https://duckduckgo.com/html/?q={query}", headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
         results = soup.find_all('a', {'class': 'result__a'})
         if results:
@@ -45,28 +44,35 @@ def search_duckduckgo(query):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# Fonction pour compléter l'URL en utilisant la parallélisation
-def get_complete_url(simplified_url):
-    if not isinstance(simplified_url, str):
-        return "Invalid URL"
+# Fonction pour compléter l'URL
+def get_complete_url(simplified_url, progress_bar, progress_value, total_urls):
     full_url = clean_url(simplified_url)
     query = f"{simplified_url}"
 
-    # Dictionnaire des fonctions de recherche
-    search_functions = {
-        'Google': search_google,
-        'Bing': search_bing,
-        'DuckDuckGo': search_duckduckgo
-    }
+    # Essayez Google d'abord
+    url = search_google(query)
+    if url and "Error" not in url:
+        progress_value += 1
+        progress_bar.progress(progress_value / total_urls)
+        return url
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {executor.submit(func, query): name for name, func in search_functions.items()}
-        for future in concurrent.futures.as_completed(futures):
-            url = future.result()
-            if url and "Error" not in url:
-                return url
+    # Si Google échoue, essayez Bing
+    url = search_bing(query)
+    if url and "Error" not in url:
+        progress_value += 1
+        progress_bar.progress(progress_value / total_urls)
+        return url
+
+    # Si Bing échoue, essayez DuckDuckGo
+    url = search_duckduckgo(query)
+    if url and "Error" not in url:
+        progress_value += 1
+        progress_bar.progress(progress_value / total_urls)
+        return url
 
     # Si tous échouent, retournez l'URL simplifiée
+    progress_value += 1
+    progress_bar.progress(progress_value / total_urls)
     return full_url
 
 # Fonction principale pour Streamlit
@@ -88,9 +94,13 @@ def main():
         st.write("File uploaded successfully. Here are the first few rows:")
         st.write(df.head())
 
+        total_urls = len(df)
+        progress_bar = st.progress(0)
+        progress_value = 0
+
         if function_choice == 'Import to Affinity':
             # Traitement pour Import to Affinity
-            df['URL'] = df.iloc[:, 0].apply(get_complete_url)
+            df['URL'] = df.iloc[:, 0].apply(lambda x: get_complete_url(x, progress_bar, progress_value, total_urls))
             df['URL'] = df['URL'].apply(clean_url)
             df.columns = ['Organization Name', 'Organization Website']
             st.write("URLs have been fetched. Here are the first few results:")
@@ -108,7 +118,7 @@ def main():
         elif function_choice == 'Import Pitchbook':
             # Traitement pour Import Pitchbook
             if 'Website' in df.columns:
-                df['Complete URL'] = df['Website'].apply(lambda x: get_complete_url(x) if isinstance(x, str) else "Invalid URL")
+                df['Complete URL'] = df['Website'].apply(lambda x: get_complete_url(x, progress_bar, progress_value, total_urls) if isinstance(x, str) else x)
                 st.write("Completing URLs for each simplified URL...")
                 st.write(df.head())
                 output_file = 'completed_urls.csv'
