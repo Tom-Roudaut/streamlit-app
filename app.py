@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from googlesearch import search
+import concurrent.futures
 
 # Fonction pour nettoyer l'URL
 def clean_url(url):
@@ -56,24 +56,27 @@ def main():
         st.write("File uploaded successfully. Here are the first few rows:")
         st.write(df.head())
 
-        total_urls = len(df)
         progress_bar = st.progress(0)
-        progress_value = 0
+        progress_text = st.empty()
 
-        # Mise à jour de la barre de progression
-        def update_progress_bar(current_value, total_value):
-            progress = current_value / total_value
-            progress_bar.progress(progress)
+        def update_progress(current, total):
+            progress_percentage = int((current / total) * 100)
+            progress_bar.progress(progress_percentage)
+            progress_text.text(f"Progress: {current}/{total}")
 
         if function_choice == 'Import to Affinity':
-            urls = []
-            for i, row in df.iterrows():
-                url = get_complete_url(row[0])
-                urls.append(url)
-                progress_value += 1
-                update_progress_bar(progress_value, total_urls)
-
-            df['URL'] = urls
+            total_rows = len(df)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future_to_url = {executor.submit(get_complete_url, row[0]): idx for idx, row in df.iterrows()}
+                for i, future in enumerate(concurrent.futures.as_completed(future_to_url)):
+                    idx = future_to_url[future]
+                    try:
+                        url = future.result()
+                        df.at[idx, 'URL'] = url
+                    except Exception as exc:
+                        df.at[idx, 'URL'] = f"Error: {str(exc)}"
+                    update_progress(i + 1, total_rows)
+            
             df['URL'] = df['URL'].apply(clean_url)
             df.columns = ['Organization Name', 'Organization Website']
             st.write("URLs have been fetched. Here are the first few results:")
@@ -90,14 +93,18 @@ def main():
 
         elif function_choice == 'Import Pitchbook':
             if 'Website' in df.columns:
-                urls = []
-                for i, row in df.iterrows():
-                    url = get_complete_url(row['Website'])
-                    urls.append(url)
-                    progress_value += 1
-                    update_progress_bar(progress_value, total_urls)
+                total_rows = len(df)
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future_to_url = {executor.submit(get_complete_url, row['Website']): idx for idx, row in df.iterrows()}
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_url)):
+                        idx = future_to_url[future]
+                        try:
+                            url = future.result()
+                            df.at[idx, 'Complete URL'] = url
+                        except Exception as exc:
+                            df.at[idx, 'Complete URL'] = f"Error: {str(exc)}"
+                        update_progress(i + 1, total_rows)
 
-                df['Complete URL'] = urls
                 st.write("Completing URLs for each simplified URL...")
                 st.write(df.head())
                 output_file = 'completed_urls.csv'
