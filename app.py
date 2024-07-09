@@ -22,7 +22,7 @@ def search_bing(query):
         if results:
             return results[0].find('a')['href']
     except Exception as e:
-        return f"Error: {str(e)}"
+        return None
 
 # Fonction pour interroger DuckDuckGo
 def search_duckduckgo(query):
@@ -34,12 +34,24 @@ def search_duckduckgo(query):
         if results:
             return results[0]['href']
     except Exception as e:
-        return f"Error: {str(e)}"
+        return None
+
+# Fonction pour interroger Google
+def search_google(query):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(f"https://www.google.com/search?q={query}", headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        results = soup.find_all('div', {'class': 'BNeawe UPmit AP7Wnd'})
+        if results:
+            return results[0].text
+    except Exception as e:
+        return None
 
 # Fonction pour compléter l'URL
 def get_complete_url(simplified_url):
     full_url = clean_url(simplified_url)
-    query = f"{simplified_url}"
+    query = f"{simplified_url} official site"
 
     # Essayez Bing
     url = search_bing(query)
@@ -51,7 +63,12 @@ def get_complete_url(simplified_url):
     if url and "Error" not in url:
         return url
 
-    # Si tous échouent, retournez l'URL simplifiée
+    # Si DuckDuckGo échoue, essayez Google
+    url = search_google(query)
+    if url and "Error" not in url:
+        return url
+
+    # Si tous échouent, retournez une erreur
     return f"Error: Could not find URL for {simplified_url}"
 
 # Fonction principale pour Streamlit
